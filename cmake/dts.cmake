@@ -21,6 +21,7 @@ set(ZEPHYR_DTS                  ${PROJECT_BINARY_DIR}/zephyr.dts)
 # and should not be made part of the documentation.
 set(EDT_PICKLE                  ${PROJECT_BINARY_DIR}/edt.pickle)
 set(DEVICETREE_UNFIXED_H        ${PROJECT_BINARY_DIR}/include/generated/devicetree_unfixed.h)
+set(DEVICETREE_RS               ${PROJECT_BINARY_DIR}/include/generated/device-tree.rs)
 set(DEVICE_EXTERN_H             ${PROJECT_BINARY_DIR}/include/generated/device_extern.h)
 set(DTS_POST_CPP                ${PROJECT_BINARY_DIR}/${BOARD}.dts.pre.tmp)
 # The location of a list of known vendor prefixes.
@@ -236,6 +237,7 @@ if(SUPPORTS_DTS)
   --dtc-flags '${EXTRA_DTC_FLAGS_RAW}'
   --bindings-dirs ${DTS_ROOT_BINDINGS}
   --header-out ${DEVICETREE_UNFIXED_H}
+  --rust-out ${DEVICETREE_RS}
   --device-header-out ${DEVICE_EXTERN_H}
   --dts-out ${ZEPHYR_DTS} # As a debugging aid
   --edt-pickle-out ${EDT_PICKLE}
@@ -252,6 +254,7 @@ if(SUPPORTS_DTS)
   else()
     message(STATUS "Generated zephyr.dts: ${ZEPHYR_DTS}")
     message(STATUS "Generated devicetree_unfixed.h: ${DEVICETREE_UNFIXED_H}")
+    message(STATUS "Generated device-tree.rs: ${DEVICETREE_RS}")
     message(STATUS "Generated device_extern.h: ${DEVICE_EXTERN_H}")
   endif()
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 # Copyright (c) 2019 - 2020 Nordic Semiconductor ASA
 # Copyright (c) 2019 Linaro Limited
 # SPDX-License-Identifier: BSD-3-Clause
@@ -135,6 +136,119 @@ def main():
 
         write_device_extern_header(args.device_header_out, edt)
 
+    # Create the generated rust module.
+    with open(args.rust_out, "w", encoding="utf-8") as rust_file:
+        print("""
+/// A device tree register
+#[derive(Debug)]
+pub struct Register {
+    /// The name of this register
+    pub name: Option<&'static str>,
+    /// The starting address of the register, in the parent address space.
+    pub addr: Option<usize>,
+    /// The length of the register in bytes
+    pub size: Option<usize>,
+}
+
+/// A structure that represents a node frome a device tree
+///
+/// Note: this structure could have a parent, except that rust requires that
+/// constants don't for a cycle. Having a parent node would create cycles with
+/// child nodes.
+#[derive(Debug)]
+pub struct Node {
+    /// The name of the node, without conversion to a valid identifier.
+    pub name: &'static str,
+    /// The path of the node, without conversion to a valid identifier.
+    pub path: &'static str,
+    /// Any labels provided for the node.
+    pub labels: &'static [&'static str],
+    /// All of the children of this node.
+    pub children: &'static [&'static Node],
+    /// The status or \"okay-ness\" of this node. [true]
+    /// indicates a status of \"okay\" or not specified.
+    /// [false] indicates an explicitly disabled node.
+    pub status: bool,
+    /// [true] indicates that \"read-only\" was specified for
+    /// this node
+    pub read_only: bool,
+    /// A list of compatible strings specifed for the node in
+    /// in the same order as they're specified in the device tree
+    pub compats: &'static [&'static str],
+    /// All the registers in the node
+    pub regs: &'static [Register],
+}
+        """, file=rust_file)
+
+        print("pub mod all_nodes {", file=rust_file)
+        print("    use super::{Node, Register};", file=rust_file)
+        for node in sorted(edt.nodes, key=lambda node: node.dep_ordinal):
+            print("    #[allow(non_upper_case_globals, unused)]", file=rust_file)
+            print(f"    pub const {str2ident_rs(node.name)}: Node = Node " +"{", file=rust_file)
+            print(f"        name: \"{node.name}\",", file=rust_file)
+            print(f"        path: \"{node.path}\",", file=rust_file)
+            print(f"        labels: &[", file=rust_file)
+            for label in node.labels:
+                print(f"            \"{label}\",", file=rust_file)
+            print(f"        ],", file=rust_file)
+            print(f"        children: &[", file=rust_file)
+            for chld in node.children.values():
+                print(f"            &{str2ident_rs(chld.name)},", file=rust_file)
+            print(f"        ],", file=rust_file)
+            if node.status:
+                print(f"        status: true,", file=rust_file)
+            else:
+                print(f"        status: false,", file=rust_file)
+            if node.read_only:
+                print(f"        read_only: true,", file=rust_file)
+            else:
+                print(f"        read_only: false,", file=rust_file)
+            print(f"        compats: &[", file=rust_file)
+            for compat in node.compats:
+                print(f"            \"{compat}\",", file=rust_file)
+            print(f"        ],", file=rust_file)
+            print(f"        regs: &[", file=rust_file)
+            for reg in node.regs:
+                print("            Register {", file=rust_file)
+                if reg.name is not None:
+                    print(f"                name: Some({reg.name}),", file=rust_file)
+                else:
+                    print("                name: None,", file=rust_file)
+                if reg.addr is not None:
+                    print(f"                addr: Some({reg.addr}),", file=rust_file)
+                else:
+                    print("                addr: None,", file=rust_file)
+                if reg.size is not None:
+                    print(f"                size: Some({reg.size}),", file=rust_file)
+                else:
+                    print("                size: None,", file=rust_file)
+                print("            },", file=rust_file)
+            print(f"        ],", file=rust_file)
+            print("    };", file=rust_file)
+        print("}", file=rust_file)
+        print("pub mod compatible {", file=rust_file)
+        for compatible in edt.compat2nodes:
+            print(f"    pub mod {str2ident_rs(compatible)} " + "{", file=rust_file)
+            print("        use super::super::Node;", file=rust_file)
+            print("        #[allow(unused_imports)]", file=rust_file)
+            print("        use super::super::all_nodes::*;", file=rust_file)
+            print("        #[allow(non_upper_case_globals, unused)]", file=rust_file)
+            print("        pub const all: &'static [&'static Node] = &[", file=rust_file)
+            for node in edt.compat2nodes[compatible]:
+                if node.name != "/":
+                    print(f"            &{str2ident_rs(node.name)},", file=rust_file)
+
+            print("        ];", file=rust_file)
+            print("        #[allow(non_upper_case_globals, unused)]", file=rust_file)
+            print("        pub const enabled: &'static [&'static Node] = &[", file=rust_file)
+            for node in edt.compat2okay[compatible]:
+                if node.name != "/":
+                    print(f"            &{str2ident_rs(node.name)},", file=rust_file)
+
+            print("        ];", file=rust_file)
+            print("    }", file=rust_file)
+        print("}", file=rust_file)
+
     if args.edt_pickle_out:
         write_pickled_edt(edt, args.edt_pickle_out)
 
@@ -206,6 +320,8 @@ def parse_args():
                         "we allow multiple")
     parser.add_argument("--header-out", required=True,
                         help="path to write header to")
+    parser.add_argument("--rust-out", required=True,
+                        help="path to write rust module to")
     parser.add_argument("--dts-out", required=True,
                         help="path to write merged DTS source code to (e.g. "
                              "as a debugging aid)")
@@ -868,6 +984,22 @@ def str2ident(s):
     # Converts 's' to a form suitable for (part of) an identifier
 
     return re.sub('[-,.@/+]', '_', s.lower())
+
+def str2ident_rs(s):
+    # Converts 's' to a form suitable for (part of) an identifier
+
+    if s == "/":
+        return "ROOT"
+    else:
+        return re.sub('[-,.@/+]', '_', s.lower())
+
+def path2ident_rs(s):
+    # Converts 's' to path within the module tree
+
+    if s == "/":
+        return ""
+    else:
+        return e.sub('[-,.@+]', '_', re.sub('[/]', "::", s.lower()))
 
 
 def list2init(l):
