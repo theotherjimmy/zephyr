@@ -3,6 +3,7 @@
 # Copyright (c) 2014-2015 Wind River Systems, Inc.
 # Copyright (c) 2015 Intel Corporation
 # Copyright (c) 2016 Cadence Design Systems, Inc.
+# Copyright (c) 2022 Arm Limited.
 # SPDX-License-Identifier: Apache-2.0
 
 # Include these first so that any properties (e.g. defaults) below can be
@@ -190,6 +191,25 @@ config SRAM_BASE_ADDRESS
 	help
 	  The SRAM base address. The default value comes from from
 	  /chosen/zephyr,sram in devicetree. The user should generally avoid
+	  changing it via menuconfig or in configuration files.
+
+# Workaround for not being able to have commas in macro arguments
+DT_CHOSEN_Z_DRAM := zephyr,dram
+
+config DRAM_SIZE
+	int "DRAM Size in kB"
+	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_DRAM),0,K)
+	help
+	  The DRAM size in kB. The default value comes from /chosen/zephyr,dram in
+	  devicetree. The user should generally avoid changing it via menuconfig or
+	  in configuration files.
+
+config DRAM_BASE_ADDRESS
+	hex "DRAM Base Address"
+	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_DRAM))
+	help
+	  The DRAM base address. The default value comes from from
+	  /chosen/zephyr,dram in devicetree. The user should generally avoid
 	  changing it via menuconfig or in configuration files.
 
 if ARC || ARM || ARM64 || NIOS2 || X86

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2014 Wind River Systems, Inc.
+ * Copyright (c) 2022 Arm Limited.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -53,6 +54,9 @@
 #define RAM_SIZE (CONFIG_SRAM_SIZE * 1K - CONFIG_BOOTLOADER_SRAM_SIZE * 1K)
 #define RAM_ADDR CONFIG_SRAM_BASE_ADDRESS
 #endif
+
+#define DRAM_SIZE (CONFIG_DRAM_SIZE * 1K)
+#define DRAM_ADDR (CONFIG_DRAM_BASE_ADDRESS)
 
 #if defined(CONFIG_CUSTOM_SECTION_ALIGN)
 _region_min_align = CONFIG_CUSTOM_SECTION_MIN_ALIGN_SIZE;
@@ -212,6 +216,18 @@ SECTIONS
 	__rom_region_end = .;
 
     GROUP_END(ROMABLE_REGION)
+    SECTION_PROLOGUE(DRAM,,SUBALIGN(4))
+        {
+        *(.dram.bss)
+		. = ALIGN(16);
+        *(.dram.data)
+		. = ALIGN(16);
+        *(.dram.rodata)
+		. = ALIGN(16);
+        *(.dram.text)
+		. = ALIGN(16);
+        *(.dram.noinit)
+        } GROUP_LINK_IN(DRAM)
 
     /*
      * These are here according to 'arm-zephyr-elf-ld --verbose',

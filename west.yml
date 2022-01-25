@@ -72,6 +72,11 @@ manifest:
       west-commands: west/west-commands.yml
       groups:
         - hal
+    - name: hal_ethos_u
+      revision: pull/1/head
+      path: modules/hal/ethos_u
+      groups:
+        - hal
     - name: hal_gigadevice
       revision: 63a72ca90b7e0d7257211ddc5c79e8c0b940371b
       path: modules/hal/gigadevice

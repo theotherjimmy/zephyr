@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2018-2021 Linaro Limited
+# Copyright (c) 2022 Arm Limited.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -12,6 +13,8 @@ CONFIG_RUNTIME_NMI=y
 CONFIG_ARM_TRUSTZONE_M=y
 CONFIG_ARM_MPU=y
 CONFIG_QEMU_ICOUNT_SHIFT=7
+CONFIG_ARM_ETHOS_U=y
+CONFIG_HEAP_MEM_POOL_SIZE=16384
 
 # GPIOs
 CONFIG_GPIO=y

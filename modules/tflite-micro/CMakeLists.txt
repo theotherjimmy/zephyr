@@ -1,4 +1,5 @@
 # Copyright (c) 2021 Intel Corporation
+# Copyright (c) 2022 Arm Limited.
 # SPDX-License-Identifier: Apache-2.0
 
 if(CONFIG_TENSORFLOW_LITE_MICRO)
@@ -13,6 +14,10 @@ if(CONFIG_TENSORFLOW_LITE_MICRO)
     ${TENSORFLOW_LITE_MICRO_DIR}/third_party_static/flatbuffers/include
     ${TENSORFLOW_LITE_MICRO_DIR}/third_party_static/ruy
   )
+
+  if (CONFIG_ARM_ETHOS_U)
+    set(ETHOSU_CO_PROCESSOR ethos_u)
+  endif()
 
   zephyr_library_sources(
     ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/simple_memory_allocator.cc
@@ -64,7 +69,7 @@ if(CONFIG_TENSORFLOW_LITE_MICRO)
     ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/kernels/detection_postprocess.cc
     ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/kernels/elementwise.cc
     ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/kernels/elu.cc
-    ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/kernels/ethosu.cc
+    ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/kernels/${ETHOSU_CO_PROCESSOR}/ethosu.cc
     ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/kernels/exp.cc
     ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/kernels/expand_dims.cc
     ${TENSORFLOW_LITE_MICRO_DIR}/tensorflow/lite/micro/kernels/fill.cc
