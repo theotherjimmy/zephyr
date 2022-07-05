@@ -11,3 +11,10 @@ config SOC_FVP_BASE_REVC_2XAEMV8A
 	select GIC_V3
 
 endchoice
+
+config SOC_FVP_AEMV8A_EL2_INIT
+	bool "ARM FVP AEMv8A EL2 Initialization"
+	default n
+	help
+	  Initialize MPIDR_EL1 in z_arm64_el2_plat_init. It's necessary
+	  when zephyr starts at EL2 on multiprocessor systems.
