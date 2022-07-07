@@ -1,0 +1,11 @@
+tests:
+  arch.arm64.svc_call.smc:
+    arch_allow: arm
+    tags: arm drivers userspace
+    filter: CONFIG_BUILD_WITH_TFA
+  arch.arm64.svc_call.hvc:
+    arch_allow: arm
+    tags: arm drivers userspace
+    filter: CONFIG_BUILD_WITH_TFA
+    extra_configs:
+      - CONFIG_SVC_CALL_USE_HVC=y
