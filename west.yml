@@ -21,6 +21,8 @@ manifest:
   remotes:
     - name: upstream
       url-base: https://github.com/zephyrproject-rtos
+    - name: tfatest
+      url-base: https://github.com/HuifengZhang01
 
   #
   # Please add items below based on alphabetical order
@@ -227,6 +229,12 @@ manifest:
     - name: trusted-firmware-m
       revision: 7c53a6e76130a85303f83b15d868a92fdcd5f5be
       path: modules/tee/tf-m/trusted-firmware-m
+      groups:
+        - tee
+    - name: trusted-firmware-a
+      remote: tfatest
+      revision: 371004ba9152404d4c6ea36676822ea183e41d22
+      path: modules/tee/tf-a/trusted-firmware-a
       groups:
         - tee
     - name: tf-m-tests
