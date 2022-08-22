@@ -1,0 +1,12 @@
+# Copyright (c) 2021 Carlo Caione <ccaione@baylibre.com>
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_SERIES_FVP_CORSTONE1000_A35
+	bool "ARM FVP AEMv8A AArch64 Series"
+	select ARM64
+	select CPU_CORTEX
+	select CPU_CORTEX_A
+	select CPU_HAS_MMU
+	select SOC_FAMILY_ARM64
+	help
+	  Enable support for ARM FVP AEMv8A AArch64 Series

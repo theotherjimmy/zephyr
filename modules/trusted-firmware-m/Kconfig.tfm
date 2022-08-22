@@ -14,6 +14,7 @@ config TFM_BOARD
 	default "nxp/lpcxpresso55s69" if BOARD_LPCXPRESSO55S69_CPU0
 	default "arm/mps2/an521" if BOARD_MPS2_AN521_CPU0_NS
 	default "arm/mps3/an547" if BOARD_MPS3_AN547
+	default "arm/corstone1000" if BOARD_FVP_CORSTONE1000_A35
 	default "stm/b_u585i_iot02a" if BOARD_B_U585I_IOT02A
 	default "stm/nucleo_l552ze_q" if BOARD_NUCLEO_L552ZE_Q
 	default "stm/stm32l562e_dk" if BOARD_STM32L562E_DK
@@ -24,11 +25,19 @@ config TFM_BOARD
 	  The board name used for building TFM. Building with TFM requires that
 	  TFM has been ported to the given board/SoC.
 
+config TFM_PLATFORM_IS_FVP
+	bool "binary to run on an fvp"
+	default true if BOARD_FVP_CORSTONE1000_A35
+	default false
+	help
+	  Some platforms switch on if they will run on hardware or a software simulator
+	  This configures the binary to run on an FVP.
+
 menuconfig BUILD_WITH_TFM
 	bool "Build with TF-M as the Secure Execution Environment"
-	depends on TRUSTED_EXECUTION_NONSECURE
+	# depends on TRUSTED_EXECUTION_NONSECURE
 	depends on TFM_BOARD != ""
-	depends on ARM_TRUSTZONE_M
+	# depends on ARM_TRUSTZONE_M
 	select BUILD_OUTPUT_HEX
 	imply INIT_ARCH_HW_AT_BOOT
 	imply ARM_NONSECURE_PREEMPTIBLE_SECURE_CALLS
@@ -250,6 +259,13 @@ config TFM_IPC
 	  the PSA API (IPC mode) instead of the secure library mode. When
 	  TF-M Profile option is supplied, do not allow manual setting of
 	  the IPC mode, as it is determined by the profile setting.
+
+config TFM_MULTI_CORE
+	bool "MULTI_CORE"
+	default n
+	help
+	  When enabled, this option signifies that the TF-M build uses RPC
+	  over a mailbox queue instead of the secure library mode.
 
 config TFM_REGRESSION_S
 	bool "TF-M Secure Regression tests"
