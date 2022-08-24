@@ -8,8 +8,10 @@
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
-#include <zephyr/arch/arm/aarch32/cortex_m/cmsis.h>
-#include <zephyr/arch/arm/aarch32/cortex_m/fpu.h>
+#if CONFIG_CORTEX_M
+#include <arch/arm/aarch32/cortex_m/cmsis.h>
+#include <arch/arm/aarch32/cortex_m/fpu.h>
+#endif /* CONFIG_32BIT */
 
 #include <tfm_ns_interface.h>
 
@@ -48,13 +50,17 @@ int32_t tfm_ns_interface_dispatch(veneer_fn fn,
 #endif
 	}
 
+#if CONFIG_CPU_CORTEX_M
 	struct fpu_ctx_full context_buffer;
 
 	z_arm_save_fp_context(&context_buffer);
+#endif
 
 	result = fn(arg0, arg1, arg2, arg3);
 
+#if CONFIG_CPU_CORTEX_M
 	z_arm_restore_fp_context(&context_buffer);
+#endif
 
 	if (!is_pre_kernel) {
 #if !defined(CONFIG_ARM_NONSECURE_PREEMPTIBLE_SECURE_CALLS)

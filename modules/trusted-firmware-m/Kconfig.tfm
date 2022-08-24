@@ -24,11 +24,19 @@ config TFM_BOARD
 	  The board name used for building TFM. Building with TFM requires that
 	  TFM has been ported to the given board/SoC.
 
+config TFM_PLATFORM_IS_FVP
+	bool "binary to run on an fvp"
+	default true if BOARD_FVP_CORSTONE1000_A35
+	default false
+	help
+	  Some platforms switch on if they will run on hardware or a software simulator
+	  This configures the binary to run on an FVP.
+
 menuconfig BUILD_WITH_TFM
 	bool "Build with TF-M as the Secure Execution Environment"
-	depends on TRUSTED_EXECUTION_NONSECURE
+	# depends on TRUSTED_EXECUTION_NONSECURE
 	depends on TFM_BOARD != ""
-	depends on ARM_TRUSTZONE_M
+	# depends on ARM_TRUSTZONE_M
 	select BUILD_OUTPUT_HEX
 	imply INIT_ARCH_HW_AT_BOOT
 	imply ARM_NONSECURE_PREEMPTIBLE_SECURE_CALLS
@@ -259,6 +267,13 @@ config TFM_IPC
 	  the PSA API (IPC mode) instead of the secure library mode. When
 	  TF-M Profile option is supplied, do not allow manual setting of
 	  the IPC mode, as it is determined by the profile setting.
+
+config TFM_MULTI_CORE
+	bool "MULTI_CORE"
+	default n
+	help
+	  When enabled, this option signifies that the TF-M build uses RPC
+	  over a mailbox queue instead of the secure library mode.
 
 config TFM_REGRESSION_S
 	bool "TF-M Secure Regression tests"

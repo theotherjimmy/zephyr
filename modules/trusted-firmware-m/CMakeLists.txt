@@ -32,11 +32,14 @@ set(TFM_CRYPTO_MODULES
 
 if (CONFIG_BUILD_WITH_TFM)
   if (CONFIG_TFM_IPC)
-    list(APPEND TFM_CMAKE_ARGS -DTFM_LIB_MODEL=OFF)
+    list(APPEND TFM_CMAKE_ARGS -DTFM_LIB_MODEL=OFF -DTFM_PSA_API=ON)
     # PSA API awareness for the Non-Secure application
     target_compile_definitions(app PRIVATE "TFM_PSA_API")
   else()
     list(APPEND TFM_CMAKE_ARGS -DTFM_LIB_MODEL=ON)
+  endif()
+  if (CONFIG_TFM_MULTI_CORE)
+    list(APPEND TFM_CMAKE_ARGS -DTFM_MULTI_CORE_TOPOLOGY=ON)
   endif()
   if (CONFIG_TFM_REGRESSION_S)
     list(APPEND TFM_CMAKE_ARGS -DTEST_S=ON)
@@ -94,6 +97,10 @@ if (CONFIG_BUILD_WITH_TFM)
     list(APPEND TFM_CMAKE_ARGS -DTFM_EXCEPTION_INFO_DUMP=OFF)
   endif()
 
+  if (CONFIG_TFM_PLATFORM_IS_FVP)
+    list(APPEND TFM_CMAKE_ARGS -DPLATFORM_IS_FVP=ON)
+  endif()
+
   if (CONFIG_TFM_PARTITION_LOG_LEVEL_DEBUG)
     set(TFM_PARTITION_LOG_LEVEL "TFM_PARTITION_LOG_LEVEL_DEBUG")
   elseif (CONFIG_TFM_PARTITION_LOG_LEVEL_INFO)
@@ -145,11 +152,30 @@ if (CONFIG_BUILD_WITH_TFM)
   endforeach()
 
   set(TFM_BINARY_DIR ${CMAKE_BINARY_DIR}/tfm)
+  set(TFM_INSTALL_DIR ${TFM_BINARY_DIR}/install)
 
-  set(VENEERS_FILE ${TFM_BINARY_DIR}/secure_fw/s_veneers.o)
-  set(TFM_API_NS_PATH ${TFM_BINARY_DIR}/tf-m-tests/app/libtfm_api_ns.a)
+  if(CONFIG_CORTEX_M)
+    set(VENEERS_FILE ${TFM_BINARY_DIR}/secure_fw/s_veneers.o)
+    set(TFM_API_NS_PATH ${TFM_BINARY_DIR}/tf-m-tests/app/libtfm_api_ns.a)
+    set(PLATFORM_NS_FILE ${TFM_BINARY_DIR}/platform/libplatform_ns.a)
+  else()
+    list(APPEND TFM_CMAKE_ARGS
+      -DTFM_MULTI_CORE_NS_OS=on
+      -DTFM_MULTI_CORE_TOPOLOGY=on
+      -DLIBOPENAMP_SRC_PATH=${ZEPHYR_OPEN_AMP_MODULE_DIR}/open-amp
+      -DLIBOPENAMP_BIN_PATH=${TFM_BINARY_DIR}/libopenamp
+      -DLIBMETAL_SRC_PATH=${ZEPHYR_LIBMETAL_MODULE_DIR}/libmetal      -DLIBMETAL_BIN_PATH=${TFM_BINARY_DIR}/libmetal
+    )
+    set(TFM_OPENAMP_FILE ${TFM_INSTALL_DIR}/lib/libopen_amp.a)
+    set(TFM_LIBMETAL_FILE ${TFM_INSTALL_DIR}/lib/libmetal.a)
+#    set(TFM_INTERFACE_SOURCES
+#      ${TFM_INSTALL_DIR}/interface/src/tfm_ns_mailbox.c
+#      ${TFM_INSTALL_DIR}/interface/src/tfm_ns_mailbox_thread.c
+#      ${TFM_INSTALL_DIR}/interface/src/tfm_multi_core_ns_api.c
+#      ${TFM_INSTALL_DIR}/interface/src/tfm_multi_core_psa_ns_api.c
+#    )
+  endif()
   set(TFM_GENERATED_INCLUDES ${TFM_BINARY_DIR}/generated/interface/include)
-  set(PLATFORM_NS_FILE ${TFM_BINARY_DIR}/platform/libplatform_ns.a)
 
   if (TFM_PSA_TEST_SUITE)
     set(PSA_TEST_VAL_FILE ${TFM_BINARY_DIR}/tf-m-tests/app/psa_api_tests/val/val_nspe.a)
@@ -166,6 +192,7 @@ if (CONFIG_BUILD_WITH_TFM)
     set(BL2_ELF_FILE ${TFM_BINARY_DIR}/bin/bl2.elf)
     set(BL2_BIN_FILE ${TFM_BINARY_DIR}/bin/bl2.bin)
     set(BL2_HEX_FILE ${TFM_BINARY_DIR}/bin/bl2.hex)
+    set(BL1_BIN_FILE ${TFM_BINARY_DIR}/bin/bl1.bin)
   endif()
   set(TFM_S_ELF_FILE ${TFM_BINARY_DIR}/bin/tfm_s.elf)
   set(TFM_S_BIN_FILE ${TFM_BINARY_DIR}/bin/tfm_s.bin)
@@ -187,6 +214,7 @@ if (CONFIG_BUILD_WITH_TFM)
     ${BL2_ELF_FILE}
     ${BL2_BIN_FILE}
     ${BL2_HEX_FILE}
+    ${BL1_BIN_FILE}
     ${TFM_S_ELF_FILE}
     ${TFM_S_BIN_FILE}
     ${TFM_S_HEX_FILE}
@@ -195,6 +223,9 @@ if (CONFIG_BUILD_WITH_TFM)
     ${TFM_S_SIGNED_BIN_FILE}
     ${TFM_NS_SIGNED_BIN_FILE}
     ${TFM_S_NS_SIGNED_BIN_FILE}
+    ${TFM_OPENAMP_FILE}
+    ${TFM_LIBMETAL_FILE}
+    ${TFM_INTERFACE_SOURCES}
     )
 
   # Get the toolchain variant
@@ -307,6 +338,7 @@ if (CONFIG_BUILD_WITH_TFM)
       BL2_ELF_FILE ${BL2_ELF_FILE}
       BL2_BIN_FILE ${BL2_BIN_FILE}
       BL2_HEX_FILE ${BL2_HEX_FILE}
+      BL1_BIN_FILE ${BL1_BIN_FILE}
       )
   endif()
 
@@ -330,6 +362,7 @@ if (CONFIG_BUILD_WITH_TFM)
   zephyr_library_sources(
     src/zephyr_tfm_log.c
     interface/interface.c
+    ${TFM_INTERFACE_SOURCES}
     )
   # Non-Secure interface to request system reboot
   if (CONFIG_TFM_PARTITION_PLATFORM AND NOT CONFIG_TFM_PARTITION_PLATFORM_CUSTOM_REBOOT)
@@ -352,6 +385,8 @@ if (CONFIG_BUILD_WITH_TFM)
     ${PLATFORM_NS_FILE}
     ${TFM_API_NS_PATH}
     ${VENEERS_FILE}
+    ${TFM_OPENAMP_FILE}
+    ${TFM_LIBMETAL_FILE}
     )
 
   # To ensure that generated include files are created before they are used.
@@ -377,7 +412,7 @@ if (CONFIG_BUILD_WITH_TFM)
     set(HEX_ADDR_ARGS_NS "--hex-addr=${TFM_HEX_BASE_ADDRESS_NS}")
   endif()
 
-  function(tfm_sign OUT_ARG SUFFIX PAD INPUT_FILE OUTPUT_FILE)
+  function(tfm_sign OUT_ARG SUFFIX PAD OFFSET INPUT_FILE OUTPUT_FILE)
     if(PAD)
       set(pad_args --pad --pad-header)
     endif()
@@ -396,7 +431,7 @@ if (CONFIG_BUILD_WITH_TFM)
       ${HEX_ADDR_ARGS_${SUFFIX}}
       ${ADD_${SUFFIX}_IMAGE_MIN_VER}
       -s auto
-      -H ${CONFIG_ROM_START_OFFSET}
+      -H ${OFFSET}
       ${INPUT_FILE}
       ${OUTPUT_FILE}
       PARENT_SCOPE)
@@ -406,6 +441,7 @@ if (CONFIG_BUILD_WITH_TFM)
   set(S_NS_FILE ${CMAKE_BINARY_DIR}/tfm_s_zephyr_ns.hex)
   set(S_NS_SIGNED_FILE ${CMAKE_BINARY_DIR}/tfm_s_zephyr_ns_signed.hex)
   set(NS_SIGNED_FILE ${CMAKE_BINARY_DIR}/zephyr_ns_signed.hex)
+  set(NS_SIGNED_BIN ${CMAKE_BINARY_DIR}/zephyr_ns_signed.bin)
   set(S_SIGNED_FILE ${CMAKE_BINARY_DIR}/tfm_s_signed.hex)
 
   if (CONFIG_TFM_REGRESSION_NS)
@@ -430,7 +466,7 @@ if (CONFIG_BUILD_WITH_TFM)
     )
 
   elseif(CONFIG_TFM_MCUBOOT_IMAGE_NUMBER STREQUAL "1")
-    tfm_sign(sign_cmd NS TRUE ${S_NS_FILE} ${S_NS_SIGNED_FILE})
+    tfm_sign(sign_cmd NS TRUE ${CONFIG_ROM_START_OFFSET} ${S_NS_FILE} ${S_NS_SIGNED_FILE})
 
     set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
       COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/mergehex.py
@@ -454,12 +490,32 @@ if (CONFIG_BUILD_WITH_TFM)
 
   else()
     if (CONFIG_TFM_REGRESSION_NS)
-      tfm_sign(sign_cmd_ns NS TRUE ${NS_APP_FILE} ${NS_SIGNED_FILE})
+      tfm_sign(sign_cmd_ns NS TRUE ${CONFIG_ROM_START_OFFSET} ${NS_APP_FILE} ${NS_SIGNED_FILE})
     else()
-      tfm_sign(sign_cmd_ns NS FALSE ${NS_APP_FILE} ${NS_SIGNED_FILE})
+      if (CONFIG_CORTEX_M)
+        tfm_sign(sign_cmd_ns NS FALSE ${CONFIG_ROM_START_OFFSET} ${NS_APP_FILE} ${NS_SIGNED_FILE})
+      else()
+        set(TFA_BL2 $<TARGET_PROPERTY:tfa,BL2>)
+        set(TFA_BL2_SIGNED ${CMAKE_BINARY_DIR}/tfa-bl2_signed.hex)
+        set(TFA_BL2_SIGNED_BIN ${CMAKE_BINARY_DIR}/tfa-bl2_signed.bin)
+        set(TFA_FIP ${CMAKE_BINARY_DIR}/tfa-fip.bin)
+        tfm_sign(sign_cmd_bl2 BL2 TRUE ${CONFIG_ROM_START_OFFSET} ${TFA_BL2} ${TFA_BL2_SIGNED})
+        set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
+          COMMAND ${sign_cmd_bl2} -x 0x131150
+          COMMAND ${CMAKE_OBJCOPY} -I ihex -O binary
+            ${TFA_BL2_SIGNED}
+            ${TFA_BL2_SIGNED_BIN}
+          COMMAND $<TARGET_PROPERTY:tfa,FIPTOOL> update
+            --tb-fw ${TFA_BL2_SIGNED_BIN}
+            $<TARGET_PROPERTY:tfa,FIP>
+            --out ${TFA_FIP}
+        )
+        tfm_sign(sign_cmd_ns FIP TRUE ${CONFIG_ROM_START_OFFSET} ${TFA_FIP} ${NS_SIGNED_FILE})
+        set(sign_cmd_ns ${sign_cmd_ns} -x 0x130000)
+      endif()
     endif()
 
-    tfm_sign(sign_cmd_s S TRUE $<TARGET_PROPERTY:tfm,TFM_S_HEX_FILE> ${S_SIGNED_FILE})
+    tfm_sign(sign_cmd_s S TRUE ${CONFIG_ROM_START_OFFSET} $<TARGET_PROPERTY:tfm,TFM_S_HEX_FILE> ${S_SIGNED_FILE})
 
     #Create and sign for concatenated binary image, should align with the TF-M BL2
     set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
@@ -478,5 +534,15 @@ if (CONFIG_BUILD_WITH_TFM)
       ${NS_SIGNED_FILE}
       ${MERGED_FILE}
     )
+    if(NOT CONFIG_CORTEX_M)
+      set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
+        COMMAND ${CMAKE_OBJCOPY} -I ihex -O binary
+          ${NS_SIGNED_FILE}
+          ${NS_SIGNED_BIN}
+      )
+      set_property(GLOBAL APPEND PROPERTY extra_post_build_byproducts
+        ${NS_SIGNED_BIN}
+      )
+    endif()
   endif()
 endif()
