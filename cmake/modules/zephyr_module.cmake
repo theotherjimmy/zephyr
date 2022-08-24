@@ -105,6 +105,7 @@ if(WEST OR ZEPHYR_MODULES)
       string(REGEX REPLACE "\"(.*)\":\".*\":\".*\"" "\\1" module_name ${module})
       list(APPEND ZEPHYR_MODULE_NAMES ${module_name})
     endforeach()
+    list(SORT ZEPHYR_MODULE_NAMES)
   endif()
 
   # MODULE_EXT_ROOT is process order which means Zephyr module roots processed
