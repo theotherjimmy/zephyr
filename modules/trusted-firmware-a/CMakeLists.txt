@@ -21,8 +21,10 @@ if (CONFIG_BUILD_WITH_TFA)
 
   if (CONFIG_TFA_MAKE_BUILD_TYPE_DEBUG)
     set(TFA_BUILD_DEBUG "1")
+    set(TFA_OUT_DIR ${TFA_BINARY_DIR}/${CONFIG_TFA_PLAT}/debug)
   else()
     set(TFA_BUILD_DEBUG "0")
+    set(TFA_OUT_DIR ${TFA_BINARY_DIR}/${CONFIG_TFA_PLAT}/release)
   endif()
 
   if (CONFIG_TFA_TARGET_PLATFORM)
@@ -45,5 +47,11 @@ if (CONFIG_BUILD_WITH_TFA)
             ${EL3_ARG}
             BL33=${CMAKE_BINARY_DIR}/zephyr/${KERNEL_BIN_NAME}
             all fip
+  )
+
+  set_target_properties(tfa PROPERTIES
+    BL2 ${TFA_OUT_DIR}/bl2.bin
+    FIP ${TFA_OUT_DIR}/fip.bin
+    FIPTOOL ${ZEPHYR_TRUSTED_FIRMWARE_A_MODULE_DIR}/tools/fiptool/fiptool
   )
 endif()
