@@ -1,0 +1,13 @@
+# Copyright (c) 2021 Carlo Caione <ccaione@baylibre.com>
+# SPDX-License-Identifier: Apache-2.0
+
+choice
+	prompt "ARM FVP AEMv8A AArch64 SoCs"
+	depends on SOC_SERIES_FVP_CORSTONE1000_A35
+
+config SOC_FVP_CORSTONE1000_A35
+	bool "ARM FVP Corstone 1000 A35 AArch64 simulation"
+	select CPU_CORTEX_A35
+	select GIC_V2
+
+endchoice
