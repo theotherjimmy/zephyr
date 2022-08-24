@@ -25,11 +25,24 @@ if (CONFIG_BUILD_WITH_TFA)
     set(TFA_BUILD_DEBUG "0")
   endif()
 
+  if (CONFIG_TFA_TARGET_PLATFORM)
+    set(TARGET_PLAT_ARG TARGET_PLATFORM=${CONFIG_TFA_TARGET_PLATFORM})
+  endif()
+  if (CONFIG_TFA_PIE)
+    set(PIE_ARG ENABLE_PIE=1)
+  endif()
+  if (CONFIG_TFA_BL2_AT_EL3)
+    set(EL3_ARG BL2_AT_EL3=1)
+  endif()
+
   set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
       COMMAND make -C ${ZEPHYR_TRUSTED_FIRMWARE_A_MODULE_DIR}
             DEBUG=${TFA_BUILD_DEBUG}
             CROSS_COMPILE=${CROSS_COMPILE}
-            BUILD_BASE=${TFA_BINARY_DIR} PLAT=${TFA_PLAT}
+            BUILD_BASE=${TFA_BINARY_DIR} PLAT=${CONFIG_TFA_PLAT}
+            ${TARGET_PLAT_ARG}
+            ${PIE_ARG}
+            ${EL3_ARG}
             BL33=${CMAKE_BINARY_DIR}/zephyr/${KERNEL_BIN_NAME}
             all fip
   )

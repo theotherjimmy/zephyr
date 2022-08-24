@@ -19,4 +19,21 @@ config TFA_MAKE_BUILD_TYPE_DEBUG
 	help
 	  When enabled, the build type of TF-A would be debug.
 
+config TFA_PLAT
+	string "The platform to build TF-A for"
+	default "corstone1000" if BOARD_FVP_CORSTONE1000_A35
+	default "fvp"
+
+config TFA_TARGET_PLATFORM
+	string "The sub-platform for a target, if that is needed"
+	default "fvp" if BOARD_FVP_CORSTONE1000_A35
+
+config TFA_PIE
+	bool "Enable position independent code for the builtin TF-A"
+	default false
+
+config TFA_BL2_AT_EL3
+	bool "Configure TF-A's BL2 to run at EL3"
+	default false
+
 endif # BUILD_WITH_TFA
