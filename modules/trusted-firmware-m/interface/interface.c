@@ -98,6 +98,27 @@ static int ns_interface_init(const struct device *arg)
 	return 0;
 }
 
+#if CONFIG_CPU_CORTEX_A
+
+#include "tfm_mailbox.h"
+K_MUTEX_DEFINE(tfm_mailbox_mutex);
+
+void tfm_ns_mailbox_hal_enter_critical(void) {
+    k_mutex_lock(&tfm_mailbox_mutex, K_FOREVER);
+}
+
+void tfm_ns_mailbox_hal_exit_critical(void) {
+    k_mutex_unlock(&tfm_mailbox_mutex);
+}
+
+int32_t tfm_ns_mailbox_hal_notify_peer(void) {
+    // Unimplemented!
+    return MAILBOX_SUCCESS;
+}
+
+#endif
+
 /* Initialize the TFM NS interface */
 SYS_INIT(ns_interface_init, POST_KERNEL,
 	 CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
+

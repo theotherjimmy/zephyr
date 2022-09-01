@@ -168,12 +168,14 @@ if (CONFIG_BUILD_WITH_TFM)
     )
     set(TFM_OPENAMP_FILE ${TFM_INSTALL_DIR}/lib/libopen_amp.a)
     set(TFM_LIBMETAL_FILE ${TFM_INSTALL_DIR}/lib/libmetal.a)
-#    set(TFM_INTERFACE_SOURCES
-#      ${TFM_INSTALL_DIR}/interface/src/tfm_ns_mailbox.c
-#      ${TFM_INSTALL_DIR}/interface/src/tfm_ns_mailbox_thread.c
-#      ${TFM_INSTALL_DIR}/interface/src/tfm_multi_core_ns_api.c
-#      ${TFM_INSTALL_DIR}/interface/src/tfm_multi_core_psa_ns_api.c
-#    )
+    set(TFM_INTERFACE_SOURCES
+      ${TFM_INSTALL_DIR}/interface/src/tfm_ns_mailbox.c
+      ${TFM_INSTALL_DIR}/interface/src/tfm_multi_core_ns_api.c
+      ${TFM_INSTALL_DIR}/interface/src/tfm_multi_core_psa_ns_api.c
+      ${TFM_INSTALL_DIR}/interface/src/tfm_its_ipc_api.c
+      ${TFM_INSTALL_DIR}/interface/src/tfm_ps_ipc_api.c
+      ${TFM_INSTALL_DIR}/interface/src/tfm_platform_ipc_api.c
+    )
   endif()
   set(TFM_GENERATED_INCLUDES ${TFM_BINARY_DIR}/generated/interface/include)
 
