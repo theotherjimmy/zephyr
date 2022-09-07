@@ -1,0 +1,54 @@
+From 9ab96dd05b72c81090b125e7a557385468986876 Mon Sep 17 00:00:00 2001
+From: Jimmy Brisson <theotherjimmy@gmail.com>
+Date: Wed, 7 Sep 2022 13:05:37 -0500
+Subject: [PATCH] Corstone1K: Fix compiler warnings
+
+All of these warnings were of the form:
+    error: comparison is always false due to limited range of data type [-Werror=type-limits]
+---
+ .../target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c   | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/platform/ext/target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c b/platform/ext/target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c
+index 94118a82..4970bc75 100644
+--- a/platform/ext/target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c
++++ b/platform/ext/target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c
+@@ -259,7 +259,7 @@ static int32_t STRATAFLASHJ3_Flash_ReadData(uint32_t addr, void *data, uint32_t
+ {
+     enum strataflashj3_error_t ret;
+ 
+-    if (STRATAFLASHJ3DriverCapabilities.data_width > 2 || STRATAFLASHJ3DriverCapabilities.data_width < 0)
++    if (STRATAFLASHJ3DriverCapabilities.data_width > 2)
+     {
+         SPI_FLASH_LOG_MSG("%s: Incorrect data width selected: addr=0x%x\n\r", __func__, addr);
+         return ARM_DRIVER_ERROR;
+@@ -285,7 +285,7 @@ static int32_t STRATAFLASHJ3_Flash_ProgramData(uint32_t addr, const void *data,
+ {
+     enum strataflashj3_error_t ret;
+     
+-    if (STRATAFLASHJ3DriverCapabilities.data_width > 2 || STRATAFLASHJ3DriverCapabilities.data_width < 0)
++    if (STRATAFLASHJ3DriverCapabilities.data_width > 2)
+     {
+         SPI_FLASH_LOG_MSG("%s: Incorrect data width selected: addr=0x%x\n\r", __func__, addr);
+         return ARM_DRIVER_ERROR;
+@@ -386,7 +386,7 @@ static int32_t STRATAFLASHJ3_Flash_ReadData_SE(uint32_t addr, void *data, uint32
+ {
+     enum strataflashj3_error_t ret;
+ 
+-    if (STRATAFLASHJ3DriverCapabilities.data_width > 2 || STRATAFLASHJ3DriverCapabilities.data_width < 0)
++    if (STRATAFLASHJ3DriverCapabilities.data_width > 2)
+     {
+         SPI_FLASH_LOG_MSG("%s: Incorrect data width selected: addr=0x%x\n\r", __func__, addr);
+         return ARM_DRIVER_ERROR;
+@@ -411,7 +411,7 @@ static int32_t STRATAFLASHJ3_Flash_ProgramData_SE(uint32_t addr, const void *dat
+ {
+     enum strataflashj3_error_t ret;
+ 
+-    if (STRATAFLASHJ3DriverCapabilities.data_width > 2 || STRATAFLASHJ3DriverCapabilities.data_width < 0)
++    if (STRATAFLASHJ3DriverCapabilities.data_width > 2)
+     {
+         SPI_FLASH_LOG_MSG("%s: Incorrect data width selected: addr=0x%x\n\r", __func__, addr);
+         return ARM_DRIVER_ERROR;
+-- 
+2.36.1
+
