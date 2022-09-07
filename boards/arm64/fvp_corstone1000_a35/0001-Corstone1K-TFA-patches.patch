@@ -1,0 +1,118 @@
+From d0ccb0c5807126ca9ce35bac5348c1cfce39950b Mon Sep 17 00:00:00 2001
+From: Jimmy Brisson <theotherjimmy@gmail.com>
+Date: Wed, 7 Sep 2022 09:30:22 -0500
+Subject: [PATCH] Corstone1K TFA patches
+
+---
+ .../common/corstone1000_bl2_mem_params_desc.c | 52 +++++++++----------
+ plat/arm/board/corstone1000/platform.mk       | 10 ++--
+ 2 files changed, 31 insertions(+), 31 deletions(-)
+
+diff --git a/plat/arm/board/corstone1000/common/corstone1000_bl2_mem_params_desc.c b/plat/arm/board/corstone1000/common/corstone1000_bl2_mem_params_desc.c
+index fe521a9fa..b9f2671c1 100644
+--- a/plat/arm/board/corstone1000/common/corstone1000_bl2_mem_params_desc.c
++++ b/plat/arm/board/corstone1000/common/corstone1000_bl2_mem_params_desc.c
+@@ -34,37 +34,37 @@ static bl_mem_params_node_t bl2_mem_params_descs[] = {
+ 		.image_info.image_base = BL31_BASE,
+ 		.image_info.image_max_size = BL31_LIMIT - BL31_BASE,
+ 
+-		.next_handoff_image_id = BL32_IMAGE_ID,
++		.next_handoff_image_id = BL33_IMAGE_ID,
+ 	},
+ 
+-	/* Fill BL32 related information */
+-	{
+-		.image_id = BL32_IMAGE_ID,
++//	/* Fill BL32 related information */
++//	{
++//		.image_id = BL32_IMAGE_ID,
+ 
+-		SET_STATIC_PARAM_HEAD(ep_info, PARAM_EP,
+-			VERSION_2, entry_point_info_t, SECURE | EXECUTABLE),
+-		.ep_info.pc = BL32_BASE,
+-			.ep_info.args.arg0 = CORSTONE1000_TOS_FW_CONFIG_BASE,
+-		SET_STATIC_PARAM_HEAD(image_info, PARAM_EP,
+-			VERSION_2, image_info_t, 0),
+-		.image_info.image_base = BL32_BASE,
+-		.image_info.image_max_size = BL32_LIMIT - BL32_BASE,
++//		SET_STATIC_PARAM_HEAD(ep_info, PARAM_EP,
++//			VERSION_2, entry_point_info_t, SECURE | EXECUTABLE),
++//		.ep_info.pc = BL32_BASE,
++//			.ep_info.args.arg0 = CORSTONE1000_TOS_FW_CONFIG_BASE,
++//		SET_STATIC_PARAM_HEAD(image_info, PARAM_EP,
++//			VERSION_2, image_info_t, 0),
++//		.image_info.image_base = BL32_BASE,
++//		.image_info.image_max_size = BL32_LIMIT - BL32_BASE,
+ 
+-		.next_handoff_image_id = BL33_IMAGE_ID,
+-	},
++//		.next_handoff_image_id = BL33_IMAGE_ID,
++//	},
+ 
+-	/* Fill TOS_FW_CONFIG related information */
+-	{
+-		.image_id = TOS_FW_CONFIG_ID,
+-		.image_info.image_base = CORSTONE1000_TOS_FW_CONFIG_BASE,
+-		.image_info.image_max_size = (CORSTONE1000_TOS_FW_CONFIG_LIMIT -
+-					      CORSTONE1000_TOS_FW_CONFIG_BASE),
+-		SET_STATIC_PARAM_HEAD(ep_info, PARAM_IMAGE_BINARY,
+-			VERSION_2, entry_point_info_t, SECURE | NON_EXECUTABLE),
+-		SET_STATIC_PARAM_HEAD(image_info, PARAM_IMAGE_BINARY,
+-		VERSION_2, image_info_t, 0),
+-		.next_handoff_image_id = INVALID_IMAGE_ID,
+-	},
++//	/* Fill TOS_FW_CONFIG related information */
++//	{
++//		.image_id = TOS_FW_CONFIG_ID,
++//		.image_info.image_base = CORSTONE1000_TOS_FW_CONFIG_BASE,
++//		.image_info.image_max_size = (CORSTONE1000_TOS_FW_CONFIG_LIMIT -
++//					      CORSTONE1000_TOS_FW_CONFIG_BASE),
++//		SET_STATIC_PARAM_HEAD(ep_info, PARAM_IMAGE_BINARY,
++//			VERSION_2, entry_point_info_t, SECURE | NON_EXECUTABLE),
++//		SET_STATIC_PARAM_HEAD(image_info, PARAM_IMAGE_BINARY,
++//		VERSION_2, image_info_t, 0),
++//		.next_handoff_image_id = INVALID_IMAGE_ID,
++//	},
+ 
+ 	/* Fill BL33 related information */
+ 	{
+diff --git a/plat/arm/board/corstone1000/platform.mk b/plat/arm/board/corstone1000/platform.mk
+index d89169142..920ca5157 100644
+--- a/plat/arm/board/corstone1000/platform.mk
++++ b/plat/arm/board/corstone1000/platform.mk
+@@ -6,7 +6,7 @@
+ 
+ # Making sure the corstone1000 platform type is specified
+ ifeq ($(filter ${TARGET_PLATFORM}, fpga fvp),)
+-	$(error TARGET_PLATFORM must be fpga or fvp)
++$(error TARGET_PLATFORM must be fpga or fvp)
+ endif
+ 
+ CORSTONE1000_CPU_LIBS	+=lib/cpus/aarch64/cortex_a35.S
+@@ -28,7 +28,7 @@ FIP_BL2_ARGS := tb-fw
+ 
+ override NEED_BL2U	:=	no
+ override NEED_BL31	:=	yes
+-NEED_BL32		:=	yes
++NEED_BL32		:=	no
+ override NEED_BL33	:=	yes
+ 
+ # Include GICv2 driver files
+@@ -67,11 +67,11 @@ ifneq (${ENABLE_STACK_PROTECTOR},0)
+ 	endif
+ endif
+ 
+-FDT_SOURCES		+=	plat/arm/board/corstone1000/common/fdts/corstone1000_spmc_manifest.dts
+-CORSTONE1000_TOS_FW_CONFIG	:=	${BUILD_PLAT}/fdts/corstone1000_spmc_manifest.dtb
++#FDT_SOURCES		+=	plat/arm/board/corstone1000/common/fdts/corstone1000_spmc_manifest.dts
++#CORSTONE1000_TOS_FW_CONFIG	:=	${BUILD_PLAT}/fdts/corstone1000_spmc_manifest.dtb
+ 
+ # Add the SPMC manifest to FIP and specify the same to certtool
+-$(eval $(call TOOL_ADD_PAYLOAD,${CORSTONE1000_TOS_FW_CONFIG},--tos-fw-config,${CORSTONE1000_TOS_FW_CONFIG}))
++#$(eval $(call TOOL_ADD_PAYLOAD,${CORSTONE1000_TOS_FW_CONFIG},--tos-fw-config,${CORSTONE1000_TOS_FW_CONFIG}))
+ 
+ # Adding TARGET_PLATFORM as a GCC define (-D option)
+ $(eval $(call add_define,TARGET_PLATFORM_$(call uppercase,${TARGET_PLATFORM})))
+-- 
+2.36.1
+

@@ -1,0 +1,431 @@
+From a6b942a0895f38c3131d65ccec3cfdc31bcbeadf Mon Sep 17 00:00:00 2001
+From: Jimmy Brisson <theotherjimmy@gmail.com>
+Date: Wed, 7 Sep 2022 09:27:56 -0500
+Subject: [PATCH] Corstone 1K tfm fixes
+
+---
+ platform/ext/common/template/nv_counters.c    |  3 +++
+ .../ext/common/tfm_hal_sp_logdev_periph.c     |  2 ++
+ platform/ext/driver/Driver_Flash.h            |  2 +-
+ platform/ext/driver/Driver_USART.h            |  4 ++--
+ .../corstone1000/CMSIS_Driver/Driver_Flash.c  |  6 +++--
+ .../target/arm/corstone1000/CMakeLists.txt    | 17 ++++++++++++++
+ .../Device/Source/device_definition.c         |  8 +++++--
+ .../Native_Driver/spi_n25q256a_flash_lib.c    | 22 +++++++++----------
+ .../spi_strataflashj3_flash_lib.c             | 10 ++++-----
+ .../arm/corstone1000/openamp/CMakeLists.txt   |  1 +
+ .../openamp/platform_spe_dual_core_hal.c      |  2 +-
+ .../tfm_spe_dual_core_psa_client_secure_lib.c | 10 ++++-----
+ .../openamp/tfm_spe_openamp_interface_impl.c  |  4 ++--
+ .../tfm_spe_openamp_platform_interconnect.c   |  1 +
+ .../arm/corstone1000/tfm_hal_isolation.c      |  2 ++
+ 15 files changed, 63 insertions(+), 31 deletions(-)
+
+diff --git a/platform/ext/common/template/nv_counters.c b/platform/ext/common/template/nv_counters.c
+index 1746ce86..d7eb9f0b 100644
+--- a/platform/ext/common/template/nv_counters.c
++++ b/platform/ext/common/template/nv_counters.c
+@@ -45,6 +45,8 @@ enum tfm_plat_err_t tfm_plat_init_nv_counter(void)
+ static enum tfm_plat_err_t read_nv_counter_otp(enum tfm_otp_element_id_t id,
+                                                uint32_t size, uint8_t *val)
+ {
++    /* This seems bad */
++    (void)size;
+     size_t counter_size;
+     enum tfm_plat_err_t err;
+     size_t byte_idx;
+@@ -174,6 +176,7 @@ static enum tfm_plat_err_t set_nv_counter_otp(enum tfm_otp_element_id_t id,
+ static enum tfm_plat_err_t set_nv_counter_flash(enum flash_nv_counter_id_t counter_id,
+                                                 uint32_t value)
+ {
++    (void)set_nv_counter_flash;
+     enum tfm_plat_err_t err = TFM_PLAT_ERR_SUCCESS;
+     uint32_t counter_value;
+ 
+diff --git a/platform/ext/common/tfm_hal_sp_logdev_periph.c b/platform/ext/common/tfm_hal_sp_logdev_periph.c
+index 9929d53a..5037ab81 100644
+--- a/platform/ext/common/tfm_hal_sp_logdev_periph.c
++++ b/platform/ext/common/tfm_hal_sp_logdev_periph.c
+@@ -17,6 +17,8 @@
+ __attribute__((naked))
+ static int tfm_output_unpriv_string(const unsigned char *str, size_t len)
+ {
++    (void)str;
++    (void)len;
+     __ASM volatile("SVC %0           \n"
+                    "BX LR            \n"
+                    : : "I" (TFM_SVC_OUTPUT_UNPRIV_STRING));
+diff --git a/platform/ext/driver/Driver_Flash.h b/platform/ext/driver/Driver_Flash.h
+index 287add13..cbcfd3cb 100644
+--- a/platform/ext/driver/Driver_Flash.h
++++ b/platform/ext/driver/Driver_Flash.h
+@@ -80,7 +80,7 @@ typedef struct _ARM_FLASH_INFO {
+ /**
+ \brief Flash Status
+ */
+-typedef volatile struct _ARM_FLASH_STATUS {
++typedef struct _ARM_FLASH_STATUS {
+   uint32_t busy     : 1;                ///< Flash busy flag
+   uint32_t error    : 1;                ///< Read/Program/Erase error flag (cleared on start of next operation)
+   uint32_t reserved : 30;
+diff --git a/platform/ext/driver/Driver_USART.h b/platform/ext/driver/Driver_USART.h
+index 237496bc..535a2170 100644
+--- a/platform/ext/driver/Driver_USART.h
++++ b/platform/ext/driver/Driver_USART.h
+@@ -152,7 +152,7 @@ extern "C"
+ /**
+ \brief USART Status
+ */
+-typedef volatile struct _ARM_USART_STATUS {
++typedef struct _ARM_USART_STATUS {
+   uint32_t tx_busy          : 1;        ///< Transmitter busy flag
+   uint32_t rx_busy          : 1;        ///< Receiver busy flag
+   uint32_t tx_underflow     : 1;        ///< Transmit data underflow detected (cleared on start of next send operation)
+@@ -176,7 +176,7 @@ typedef enum _ARM_USART_MODEM_CONTROL {
+ /**
+ \brief USART Modem Status
+ */
+-typedef volatile struct _ARM_USART_MODEM_STATUS {
++typedef struct _ARM_USART_MODEM_STATUS {
+   uint32_t cts      : 1;                ///< CTS state: 1=Active, 0=Inactive
+   uint32_t dsr      : 1;                ///< DSR state: 1=Active, 0=Inactive
+   uint32_t dcd      : 1;                ///< DCD state: 1=Active, 0=Inactive
+diff --git a/platform/ext/target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c b/platform/ext/target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c
+index aac6fb3f..94118a82 100644
+--- a/platform/ext/target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c
++++ b/platform/ext/target/arm/corstone1000/CMSIS_Driver/Driver_Flash.c
+@@ -62,7 +62,8 @@ struct arm_flash_dev_t {
+ static const ARM_FLASH_CAPABILITIES STRATAFLASHJ3DriverCapabilities = {
+     0, /* event_ready */
+     0, /* data_width = 0:8-bit, 1:16-bit, 2:32-bit */
+-    1  /* erase_chip */
++    1,  /* erase_chip */
++    0, /* reserved */
+ };
+ #else
+ /*
+@@ -80,7 +81,8 @@ struct arm_flash_se_dev_t {
+ static const ARM_FLASH_CAPABILITIES N25Q256ADriverCapabilities = {
+     0, /* event_ready */
+     0, /* data_width = 0:8-bit, 1:16-bit, 2:32-bit */
+-    1  /* erase_chip */
++    1,  /* erase_chip */
++    0, /* reserved */
+ };
+ /* Driver Capabilities */
+ static const ARM_FLASH_CAPABILITIES SST26VF064BDriverCapabilities = {
+diff --git a/platform/ext/target/arm/corstone1000/CMakeLists.txt b/platform/ext/target/arm/corstone1000/CMakeLists.txt
+index 16bc7089..f36685f2 100644
+--- a/platform/ext/target/arm/corstone1000/CMakeLists.txt
++++ b/platform/ext/target/arm/corstone1000/CMakeLists.txt
+@@ -98,6 +98,23 @@ target_compile_definitions(platform_s
+         $<$<BOOL:${PLATFORM_IS_FVP}>:PLATFORM_IS_FVP>
+         $<$<BOOL:${TEST_S}>:TEST_S>
+ )
++#========================= Platform Non-Secure ================================#
++
++
++target_include_directories(platform_ns
++    PUBLIC
++        .
++        ../common
++        ${PLATFORM_DIR}/..
++        cmsis_drivers
++        cmsis_drivers/config
++        device
++        device/config
++        device/include
++        device/source/armclang
++        native_drivers
++        partition
++)
+ 
+ #========================= Platform BL2 =======================================#
+ 
+diff --git a/platform/ext/target/arm/corstone1000/Device/Source/device_definition.c b/platform/ext/target/arm/corstone1000/Device/Source/device_definition.c
+index f9a22a02..06e737bc 100644
+--- a/platform/ext/target/arm/corstone1000/Device/Source/device_definition.c
++++ b/platform/ext/target/arm/corstone1000/Device/Source/device_definition.c
+@@ -34,12 +34,16 @@ struct uart_pl011_dev_t UART0_PL011_DEV = {&(UART0_PL011_DEV_CFG),
+ 
+ #ifdef MHU1_SE_TO_HOST
+ struct mhu_v2_x_dev_t MHU1_SE_TO_HOST_DEV = {(CORSTONE1000_SEH_1_SENDER_BASE),
+-                                             (MHU_V2_X_SENDER_FRAME)};
++                                             (MHU_V2_X_SENDER_FRAME),
++                                             0 /* subversion */,
++                                             0 /* is_initialized */};
+ #endif
+ 
+ #ifdef MHU1_HOST_TO_SE
+ struct mhu_v2_x_dev_t MHU1_HOST_TO_SE_DEV = {(CORSTONE1000_HSE_1_RECEIVER_BASE),
+-                                             (MHU_V2_X_RECEIVER_FRAME)};
++                                             (MHU_V2_X_RECEIVER_FRAME),
++                                             0 /* subversion */,
++                                             0 /* is_initialized */};
+ #endif
+ 
+ /* QSPI driver structures */
+diff --git a/platform/ext/target/arm/corstone1000/Native_Driver/spi_n25q256a_flash_lib.c b/platform/ext/target/arm/corstone1000/Native_Driver/spi_n25q256a_flash_lib.c
+index 84fdbefd..359c8114 100644
+--- a/platform/ext/target/arm/corstone1000/Native_Driver/spi_n25q256a_flash_lib.c
++++ b/platform/ext/target/arm/corstone1000/Native_Driver/spi_n25q256a_flash_lib.c
+@@ -41,7 +41,7 @@ static enum n25q256a_error_t spi_flash_read_reg(struct spi_n25q256a_dev_t* dev,
+     send_buf[1] = DUMMY_VAL;
+     ret = spi_transfer_and_receive(dev->controller, send_buf, rcv_buf, 2);
+     if (ret != AXI_QSPI_ERR_NONE) {
+-        return ret;
++        return (enum n25q256a_error_t) ret;
+     }
+ 
+     *reg = rcv_buf[1] & 0xFF;
+@@ -91,7 +91,7 @@ static enum n25q256a_error_t spi_flash_write_enable(
+     send_buf[0] = CMD_WRITE_ENABLE;
+     qspi_ret = spi_transfer_and_receive(dev->controller, send_buf, NULL, 1);
+     if (qspi_ret != AXI_QSPI_ERR_NONE) {
+-        return qspi_ret;
++        return (enum n25q256a_error_t) qspi_ret;
+     }
+ 
+     return N25Q256A_ERR_NONE;
+@@ -116,7 +116,7 @@ static enum n25q256a_error_t spi_flash_identify_and_clear_error(
+         send_buf[1] = 0xFF;
+         qspi_ret = spi_transfer_and_receive(dev->controller, send_buf, NULL, 2);
+         if (qspi_ret != AXI_QSPI_ERR_NONE) {
+-            return qspi_ret;
++            return (enum n25q256a_error_t) qspi_ret;
+         }
+         return N25Q256A_ERR_FLASH_CMD_FAILED;
+     }
+@@ -145,7 +145,7 @@ enum n25q256a_error_t spi_n25q256a_erase_chip(struct spi_n25q256a_dev_t* dev)
+     /* start erase */
+     qspi_ret = spi_transfer_and_receive(dev->controller, send_buf, NULL, 1);
+     if (qspi_ret != AXI_QSPI_ERR_NONE) {
+-        return qspi_ret;
++        return (enum n25q256a_error_t) qspi_ret;
+     }
+ 
+     /* wait for erase completion */
+@@ -189,7 +189,7 @@ enum n25q256a_error_t spi_n25q256a_erase(struct spi_n25q256a_dev_t* dev,
+     /* start erase */
+     qspi_ret = spi_transfer_and_receive(dev->controller, send_buf, NULL, 5);
+     if (qspi_ret != AXI_QSPI_ERR_NONE) {
+-        return qspi_ret;
++        return (enum n25q256a_error_t) qspi_ret;
+     }
+ 
+     /* wait for erase completion */
+@@ -238,7 +238,7 @@ static enum n25q256a_error_t spi_n25q256a_program_data(
+         } else {
+             write_size = MAX_PROGRAM_SIZE;
+         }
+-        for (int i = 0; i < write_size; i++) {
++        for (int i = 0; i < (int) write_size; i++) {
+             send_buf[i+5] = data[current_data_index++];
+         }
+ 
+@@ -246,7 +246,7 @@ static enum n25q256a_error_t spi_n25q256a_program_data(
+         qspi_ret = spi_transfer_and_receive(dev->controller, send_buf, NULL,
+                 write_size + 5);
+         if (qspi_ret != AXI_QSPI_ERR_NONE) {
+-            return qspi_ret;
++            return (enum n25q256a_error_t) qspi_ret;
+         }
+         /* wait for write completion */
+         ret = spi_flash_wait_for_ready(dev);
+@@ -356,10 +356,10 @@ enum n25q256a_error_t spi_n25q256a_read(struct spi_n25q256a_dev_t* dev,
+         qspi_ret = spi_transfer_and_receive(dev->controller, send_buf, rcv_buf,
+                 read_size + 5);
+         if (qspi_ret != AXI_QSPI_ERR_NONE) {
+-            return qspi_ret;
++            return (enum n25q256a_error_t) qspi_ret;
+         }
+         /* copy data to user location */
+-        for (int i = 0; i < read_size; i++) {
++        for (int i = 0; i < (int) read_size; i++) {
+             data[current_data_index] = rcv_buf[i+5];
+             current_data_index++;
+         }
+@@ -384,7 +384,7 @@ static enum n25q256a_error_t spi_n25q256a_verify_id(
+ 
+     qspi_ret = spi_transfer_and_receive(dev->controller, send_buf, rcv_buf, 7);
+     if (qspi_ret != AXI_QSPI_ERR_NONE) {
+-        return qspi_ret;
++        return (enum n25q256a_error_t) qspi_ret;
+     }
+ 
+     if ((rcv_buf[1] != MANUFACTURER_ID) || (rcv_buf[2] != MEMORY_TYPE) ||
+@@ -413,7 +413,7 @@ enum n25q256a_error_t spi_n25q256a_initialize(struct spi_n25q256a_dev_t* dev)
+     /* Initialize the QSPI controller */
+     qspi_ret = axi_qspi_initialize(dev->controller);
+     if (qspi_ret != AXI_QSPI_ERR_NONE) {
+-        return qspi_ret;
++        return (enum n25q256a_error_t) qspi_ret;
+     }
+ 
+     /* Verify device id */
+diff --git a/platform/ext/target/arm/corstone1000/Native_Driver/spi_strataflashj3_flash_lib.c b/platform/ext/target/arm/corstone1000/Native_Driver/spi_strataflashj3_flash_lib.c
+index d19d6e88..adbabfcd 100644
+--- a/platform/ext/target/arm/corstone1000/Native_Driver/spi_strataflashj3_flash_lib.c
++++ b/platform/ext/target/arm/corstone1000/Native_Driver/spi_strataflashj3_flash_lib.c
+@@ -31,7 +31,7 @@ enum strataflashj3_error_t cfi_strataflashj3_erase_chip(struct cfi_strataflashj3
+     }
+     CFI_FLASH_LOG_MSG("%s\n\r", __func__);
+     for(uint32_t counter = 0;counter<FLASH_END_ADDRESS_8MB;counter+=FLASH_SECTOR_ERASE_SIZE){
+-      ret = nor_erase(base_addr+counter);
++      ret = (enum strataflashj3_error_t) nor_erase(base_addr+counter);
+       if (ret != STRATAFLASHJ3_ERR_NONE) {
+           return ret;
+       }
+@@ -45,7 +45,7 @@ enum strataflashj3_error_t erase_block(struct cfi_strataflashj3_dev_t* dev,uint3
+   enum strataflashj3_error_t ret;
+ 
+   for(int counter = 0;counter<ERASE_BLOCK_SIZE;counter++){
+-    ret = nor_byte_program(base_addr+addr+counter,0xFF);
++    ret = (enum strataflashj3_error_t) nor_byte_program(base_addr+addr+counter,0xFF);
+     if (ret != STRATAFLASHJ3_ERR_NONE) {
+         return ret;
+     }
+@@ -88,10 +88,10 @@ static enum strataflashj3_error_t cfi_strataflashj3_program_data_byte(
+         } else {
+             write_size = MAX_PROGRAM_SIZE;
+         }
+-        for (int i = 0; i < write_size; i++) {
++        for (int i = 0; i < (int) write_size; i++) {
+             send_buf_strata[i] = data[current_data_index++];
+         }
+-        for(int counter = 0;counter<write_size;counter++){
++        for(int counter = 0; counter < (int) write_size; counter++){
+           nor_byte_program(base_addr+current_addr+(counter),send_buf_strata[counter]);
+         }
+ 
+@@ -185,7 +185,7 @@ enum strataflashj3_error_t cfi_strataflashj3_read(struct cfi_strataflashj3_dev_t
+         }
+ 
+         /* copy data to user location */
+-        for (int counter = 0; counter < read_size; counter++) {
++        for (int counter = 0; counter < (int) read_size; counter++) {
+             data[current_data_index] = nor_cfi_reg_read(base_addr + current_addr + (counter));
+             current_data_index++;
+         }
+diff --git a/platform/ext/target/arm/corstone1000/openamp/CMakeLists.txt b/platform/ext/target/arm/corstone1000/openamp/CMakeLists.txt
+index 98058204..5da8b515 100644
+--- a/platform/ext/target/arm/corstone1000/openamp/CMakeLists.txt
++++ b/platform/ext/target/arm/corstone1000/openamp/CMakeLists.txt
+@@ -49,6 +49,7 @@ target_compile_definitions(open_amp-static
+ target_link_libraries(platform_s
+     PRIVATE
+         open_amp-static
++        metal-static
+ )
+ 
+ # Export header file shared with non-secure side
+diff --git a/platform/ext/target/arm/corstone1000/openamp/platform_spe_dual_core_hal.c b/platform/ext/target/arm/corstone1000/openamp/platform_spe_dual_core_hal.c
+index 7cabaa2b..c0f5540e 100644
+--- a/platform/ext/target/arm/corstone1000/openamp/platform_spe_dual_core_hal.c
++++ b/platform/ext/target/arm/corstone1000/openamp/platform_spe_dual_core_hal.c
+@@ -124,7 +124,7 @@ enum tfm_plat_err_t tfm_hal_notify_peer(void)
+  * entries are removed from the unordered map).
+  */
+ bool  __atomic_compare_exchange_4(volatile void *mem, void *expected,
+-        uint32_t desired, bool var, int success, int failure)
++        unsigned int desired, bool var, int success, int failure)
+ {
+     bool ret = false;
+     volatile uint32_t *location = mem;
+diff --git a/platform/ext/target/arm/corstone1000/openamp/tfm_spe_dual_core_psa_client_secure_lib.c b/platform/ext/target/arm/corstone1000/openamp/tfm_spe_dual_core_psa_client_secure_lib.c
+index 0dde10cb..240027ac 100644
+--- a/platform/ext/target/arm/corstone1000/openamp/tfm_spe_dual_core_psa_client_secure_lib.c
++++ b/platform/ext/target/arm/corstone1000/openamp/tfm_spe_dual_core_psa_client_secure_lib.c
+@@ -44,7 +44,7 @@ static void prepare_and_send_output_msg(int32_t reply, int32_t request_id)
+ static void prepare_and_send_preallocated_output_msg(int32_t reply,
+         const unordered_map_entry_t* s_map_entry)
+ {
+-    uint32_t out_len = s_map_entry->msg.params.psa_call_params.out_len;
++    ssize_t out_len = s_map_entry->msg.params.psa_call_params.out_len;
+     output_buffer_with_payload_t *output_msg = (output_buffer_with_payload_t*)s_map_entry->output_buffer;
+ 
+     output_msg->header.request_id = s_map_entry->msg.request_id;
+@@ -89,7 +89,7 @@ void send_service_reply_to_non_secure(int32_t reply, void *private)
+ 
+ static psa_invec * prepare_in_vecs(unordered_map_entry_t* s_map_entry)
+ {
+-    uint32_t in_len = s_map_entry->msg.params.psa_call_params.in_len;
++    ssize_t in_len = s_map_entry->msg.params.psa_call_params.in_len;
+     TFM_CORE_ASSERT(in_len <= PSA_MAX_IOVEC);
+ 
+     psa_invec *input_buffer_in_vec = (psa_invec*)tfm_to_openamp_translate_non_secure_to_secure_ptr(
+@@ -121,11 +121,11 @@ static psa_status_t alloc_and_prepare_out_vecs(psa_outvec **out_vec_start_ptr,
+         unordered_map_entry_t* s_map_entry)
+ {
+     psa_outvec *input_buffer_outvec = NULL;
+-    size_t output_buffer_len = 0;
++    ssize_t output_buffer_len = 0;
+     size_t current_outdata_len = 0;
+     output_buffer_with_payload_t *out_buffer = NULL;
+     int max_shared_mem_buffer_size = 0;
+-    uint32_t out_len = s_map_entry->msg.params.psa_call_params.out_len;
++    ssize_t out_len = s_map_entry->msg.params.psa_call_params.out_len;
+ 
+     TFM_CORE_ASSERT(out_len <= PSA_MAX_IOVEC);
+     *out_vec_start_ptr = NULL;
+@@ -153,7 +153,7 @@ static psa_status_t alloc_and_prepare_out_vecs(psa_outvec **out_vec_start_ptr,
+     out_buffer = (output_buffer_with_payload_t*)alloc_outout_buffer_in_shared_mem(
+                                                 output_buffer_len, s_map_entry);
+ 
+-    for (int i = 0; i < PSA_MAX_IOVEC; i++) {
++    for (int i = 0; i < (ssize_t) PSA_MAX_IOVEC; i++) {
+         if (i < out_len) {
+             out_buffer->outvec[i].base = &out_buffer->payload[current_outdata_len];
+             out_buffer->outvec[i].len = input_buffer_outvec[i].len;
+diff --git a/platform/ext/target/arm/corstone1000/openamp/tfm_spe_openamp_interface_impl.c b/platform/ext/target/arm/corstone1000/openamp/tfm_spe_openamp_interface_impl.c
+index 30c3eeb3..6ca550dc 100644
+--- a/platform/ext/target/arm/corstone1000/openamp/tfm_spe_openamp_interface_impl.c
++++ b/platform/ext/target/arm/corstone1000/openamp/tfm_spe_openamp_interface_impl.c
+@@ -7,9 +7,9 @@
+  *
+  */
+ 
++#include <openamp/open_amp.h>
+ #include <metal/device.h>
+ #include <metal/spinlock.h>
+-#include <openamp/open_amp.h>
+ 
+ #include "tfm_spe_openamp_interface.h"
+ #include "tfm_spm_log.h"
+@@ -217,7 +217,7 @@ int32_t tfm_to_openamp_init(openamp_to_tfm_callback cb,
+         return ERROR;
+     }
+ 
+-    vdev.role = RPMSG_MASTER;
++    vdev.role = RPMSG_HOST;
+     vdev.vrings_num = VRING_COUNT;
+     vdev.func = &dispatch;
+     rvrings[0].io = io;
+diff --git a/platform/ext/target/arm/corstone1000/openamp/tfm_spe_openamp_platform_interconnect.c b/platform/ext/target/arm/corstone1000/openamp/tfm_spe_openamp_platform_interconnect.c
+index 057d9295..19f35246 100644
+--- a/platform/ext/target/arm/corstone1000/openamp/tfm_spe_openamp_platform_interconnect.c
++++ b/platform/ext/target/arm/corstone1000/openamp/tfm_spe_openamp_platform_interconnect.c
+@@ -46,6 +46,7 @@ static void service_reply(const void *priv, int32_t ret)
+ /* RPC get_caller_data() callback */
+ static const void *get_caller_private_data(int32_t client_id)
+ {
++    client_id = client_id;
+     if (!registered_msg) {
+         SPMLOG_ERRMSG("FATAL_ERROR: Map pointer cannot be NULL.\r\n");
+         TFM_CORE_ASSERT(0);
+diff --git a/platform/ext/target/arm/corstone1000/tfm_hal_isolation.c b/platform/ext/target/arm/corstone1000/tfm_hal_isolation.c
+index 8a8e3bca..13fe914c 100644
+--- a/platform/ext/target/arm/corstone1000/tfm_hal_isolation.c
++++ b/platform/ext/target/arm/corstone1000/tfm_hal_isolation.c
+@@ -99,6 +99,8 @@ enum tfm_hal_status_t tfm_hal_memory_has_access(uintptr_t base,
+     return TFM_HAL_SUCCESS;
+ }
+ 
++struct partition_load_info_t;
++
+ /*
+  * Implementation of tfm_hal_bind_boundaries() on Corstone1000:
+  *
+-- 
+2.36.1
+
