@@ -1,25 +1,28 @@
-From a6b942a0895f38c3131d65ccec3cfdc31bcbeadf Mon Sep 17 00:00:00 2001
+From 25248e65d0f92ef6d598357c146f267cc34f4dde Mon Sep 17 00:00:00 2001
 From: Jimmy Brisson <theotherjimmy@gmail.com>
 Date: Wed, 7 Sep 2022 09:27:56 -0500
 Subject: [PATCH] Corstone 1K tfm fixes
 
 ---
- platform/ext/common/template/nv_counters.c    |  3 +++
- .../ext/common/tfm_hal_sp_logdev_periph.c     |  2 ++
+ platform/ext/common/template/nv_counters.c    |  3 +
+ .../ext/common/tfm_hal_sp_logdev_periph.c     |  2 +
  platform/ext/driver/Driver_Flash.h            |  2 +-
- platform/ext/driver/Driver_USART.h            |  4 ++--
- .../corstone1000/CMSIS_Driver/Driver_Flash.c  |  6 +++--
- .../target/arm/corstone1000/CMakeLists.txt    | 17 ++++++++++++++
- .../Device/Source/device_definition.c         |  8 +++++--
- .../Native_Driver/spi_n25q256a_flash_lib.c    | 22 +++++++++----------
- .../spi_strataflashj3_flash_lib.c             | 10 ++++-----
- .../arm/corstone1000/openamp/CMakeLists.txt   |  1 +
- .../openamp/platform_spe_dual_core_hal.c      |  2 +-
- .../tfm_spe_dual_core_psa_client_secure_lib.c | 10 ++++-----
- .../openamp/tfm_spe_openamp_interface_impl.c  |  4 ++--
+ platform/ext/driver/Driver_USART.h            |  4 +-
+ .../corstone1000/CMSIS_Driver/Driver_Flash.c  |  6 +-
+ .../target/arm/corstone1000/CMakeLists.txt    | 17 +++++
+ .../corstone1000/Device/Include/mpu_config.h  | 58 ++++++++--------
+ .../Device/Source/device_definition.c         |  8 ++-
+ .../Native_Driver/spi_n25q256a_flash_lib.c    | 22 +++----
+ .../spi_strataflashj3_flash_lib.c             | 66 +++++++++----------
+ .../corstone1000/fw_update_agent/fwu_agent.c  |  9 +--
+ .../fw_update_agent/uefi_capsule_parser.c     |  8 +--
+ .../arm/corstone1000/openamp/CMakeLists.txt   | 11 ++--
+ .../openamp/platform_spe_dual_core_hal.c      |  3 +-
+ .../tfm_spe_dual_core_psa_client_secure_lib.c | 10 +--
+ .../openamp/tfm_spe_openamp_interface_impl.c  |  4 +-
  .../tfm_spe_openamp_platform_interconnect.c   |  1 +
- .../arm/corstone1000/tfm_hal_isolation.c      |  2 ++
- 15 files changed, 63 insertions(+), 31 deletions(-)
+ .../arm/corstone1000/tfm_hal_isolation.c      |  2 +
+ 18 files changed, 135 insertions(+), 101 deletions(-)
 
 diff --git a/platform/ext/common/template/nv_counters.c b/platform/ext/common/template/nv_counters.c
 index 1746ce86..d7eb9f0b 100644
@@ -142,6 +145,75 @@ index 16bc7089..f36685f2 100644
  
  #========================= Platform BL2 =======================================#
  
+diff --git a/platform/ext/target/arm/corstone1000/Device/Include/mpu_config.h b/platform/ext/target/arm/corstone1000/Device/Include/mpu_config.h
+index dd0d3983..5a5855e5 100644
+--- a/platform/ext/target/arm/corstone1000/Device/Include/mpu_config.h
++++ b/platform/ext/target/arm/corstone1000/Device/Include/mpu_config.h
+@@ -38,35 +38,35 @@ static inline int is_power_two(uint32_t x)
+ {
+     return ((x & (x - 1)) == 0);
+ }
+-
+-/* convert size based on the register requirement */
+-static uint32_t get_rbar_size_field(uint32_t size)
+-{
+-    /* MPU requirement:
+-       The associated region size, in bytes, is 2 ^ (SIZE+1).
+-     */
+-    int32_t count = 0; /* count number of bits till msb */
+-    int flag_two_power;
+-
+-    if (size == 0 || size == 1) {
+-        return 0;
+-    }
+-
+-    flag_two_power = is_power_two(size);
+-
+-    while(size) {
+-        size >>= 1;
+-        count++;
+-    }
+-
+-    if (flag_two_power) {
+-        count -= 1;
+-    }
+-
+-    count--; /* 2 ^ (SIZE+1) */
+-    return count;
+-}
+-
++//
++///* convert size based on the register requirement */
++//static uint32_t get_rbar_size_field(uint32_t size)
++//{
++//    /* MPU requirement:
++//       The associated region size, in bytes, is 2 ^ (SIZE+1).
++//     */
++//    int32_t count = 0; /* count number of bits till msb */
++//    int flag_two_power;
++//
++//    if (size == 0 || size == 1) {
++//        return 0;
++//    }
++//
++//    flag_two_power = is_power_two(size);
++//
++//    while(size) {
++//        size >>= 1;
++//        count++;
++//    }
++//
++//    if (flag_two_power) {
++//        count -= 1;
++//    }
++//
++//    count--; /* 2 ^ (SIZE+1) */
++//    return count;
++//}
++//
+ static inline void arm_mpu_enable(void)
+ {
+     ARM_MPU_Enable(MPU_CTRL_PRIVDEFENA_Msk | MPU_CTRL_HFNMIENA_Msk);
 diff --git a/platform/ext/target/arm/corstone1000/Device/Source/device_definition.c b/platform/ext/target/arm/corstone1000/Device/Source/device_definition.c
 index f9a22a02..06e737bc 100644
 --- a/platform/ext/target/arm/corstone1000/Device/Source/device_definition.c
@@ -264,7 +336,7 @@ index 84fdbefd..359c8114 100644
  
      /* Verify device id */
 diff --git a/platform/ext/target/arm/corstone1000/Native_Driver/spi_strataflashj3_flash_lib.c b/platform/ext/target/arm/corstone1000/Native_Driver/spi_strataflashj3_flash_lib.c
-index d19d6e88..adbabfcd 100644
+index d19d6e88..2690a87f 100644
 --- a/platform/ext/target/arm/corstone1000/Native_Driver/spi_strataflashj3_flash_lib.c
 +++ b/platform/ext/target/arm/corstone1000/Native_Driver/spi_strataflashj3_flash_lib.c
 @@ -31,7 +31,7 @@ enum strataflashj3_error_t cfi_strataflashj3_erase_chip(struct cfi_strataflashj3
@@ -307,10 +379,166 @@ index d19d6e88..adbabfcd 100644
              data[current_data_index] = nor_cfi_reg_read(base_addr + current_addr + (counter));
              current_data_index++;
          }
+@@ -197,37 +197,37 @@ enum strataflashj3_error_t cfi_strataflashj3_read(struct cfi_strataflashj3_dev_t
+     return STRATAFLASHJ3_ERR_NONE;
+ }
+ 
+-static enum strataflashj3_error_t cfi_strataflashj3_verify_id(
+-                                struct cfi_strataflashj3_dev_t* dev)
+-{
+-    uint32_t base_addr;
+-    uint32_t vendor_id, device_code;
+-
+-    base_addr = dev->controller->cfg->base;
+-
+-    nor_send_cmd(base_addr, NOR_CMD_READ_ID_CODE);
+-    vendor_id = nor_cfi_reg_read(base_addr);
+-    device_code = nor_cfi_reg_read(base_addr+4);
+-
+-    if(vendor_id != MANUFACTURER_ID || device_code != DEVICE_CODE){
+-      CFI_FLASH_LOG_MSG("ID miss-match %X-%X\n\r",
+-                              vendor_id, device_code);
+-      return STRATAFLASHJ3_ERR_WRONG_MEMORY;
+-    }
+-
+-    dev->is_initialized = true;
+-
+-    CFI_FLASH_LOG_MSG("VENDOR ID: %X \n\r",vendor_id);
+-    CFI_FLASH_LOG_MSG("STATUS ID: %X \n\r",device_code);
+-
+-    cfi_strataflashj3_erase(dev,0);
+-
+-    return STRATAFLASHJ3_ERR_NONE;
+-}
++//static enum strataflashj3_error_t cfi_strataflashj3_verify_id(
++//                                struct cfi_strataflashj3_dev_t* dev)
++//{
++//    uint32_t base_addr;
++//    uint32_t vendor_id, device_code;
++//
++//    base_addr = dev->controller->cfg->base;
++//
++//    nor_send_cmd(base_addr, NOR_CMD_READ_ID_CODE);
++//    vendor_id = nor_cfi_reg_read(base_addr);
++//    device_code = nor_cfi_reg_read(base_addr+4);
++//
++//    if(vendor_id != MANUFACTURER_ID || device_code != DEVICE_CODE){
++//      CFI_FLASH_LOG_MSG("ID miss-match %X-%X\n\r",
++//                              vendor_id, device_code);
++//      return STRATAFLASHJ3_ERR_WRONG_MEMORY;
++//    }
++//
++//    dev->is_initialized = true;
++//
++//    CFI_FLASH_LOG_MSG("VENDOR ID: %X \n\r",vendor_id);
++//    CFI_FLASH_LOG_MSG("STATUS ID: %X \n\r",device_code);
++//
++//    cfi_strataflashj3_erase(dev,0);
++//
++//    return STRATAFLASHJ3_ERR_NONE;
++//}
+ 
+ enum strataflashj3_error_t cfi_strataflashj3_initialize(struct cfi_strataflashj3_dev_t* dev)
+ {
+-    enum strataflashj3_error_t flash_ret;
++    //enum strataflashj3_error_t flash_ret;
+ 
+     if (dev->is_initialized) {
+         CFI_FLASH_LOG_MSG("%s: already initialized\n\r", __func__);
+diff --git a/platform/ext/target/arm/corstone1000/fw_update_agent/fwu_agent.c b/platform/ext/target/arm/corstone1000/fw_update_agent/fwu_agent.c
+index 3abb5dd0..0c139517 100644
+--- a/platform/ext/target/arm/corstone1000/fw_update_agent/fwu_agent.c
++++ b/platform/ext/target/arm/corstone1000/fw_update_agent/fwu_agent.c
+@@ -394,7 +394,7 @@ static int get_image_info_in_bank(struct efi_guid* guid, uint32_t* image_bank_of
+ static enum fwu_agent_error_t erase_bank(uint32_t bank_offset)
+ {
+     int ret;
+-    uint32_t sectors;
++    ssize_t sectors;
+ 
+     FWU_LOG_MSG("%s: enter\n\r", __func__);
+ 
+@@ -425,13 +425,14 @@ static enum fwu_agent_error_t erase_bank(uint32_t bank_offset)
+ 
+ 
+ static enum fwu_agent_error_t flash_full_capsule(
+-        struct fwu_metadata* metadata, void* images, uint32_t size,
++        struct fwu_metadata* metadata, void* images, uint32_t si,
+         uint32_t version)
+ {
+     int ret;
+     uint32_t active_index = metadata->active_index;
+     uint32_t bank_offset;
+     uint32_t previous_active_index;
++    ssize_t size = si;
+ 
+     FWU_LOG_MSG("%s: enter: image = 0x%p, size = %u, version = %u\n\r"
+                 , __func__, images, size, version);
+@@ -495,13 +496,13 @@ static enum fwu_agent_error_t flash_full_capsule(
+ 
+ enum fwu_agent_error_t corstone1000_fwu_flash_image(void)
+ {
+-    enum fwu_agent_error_t ret;
++    enum fwu_agent_error_t ret = 0;
+     struct fwu_private_metadata priv_metadata;
+     enum fwu_agent_state_t current_state;
+     void *capsule_ptr = (char*)CORSTONE1000_HOST_DRAM_UEFI_CAPSULE;
+     int image_index;
+     uint32_t image_bank_offset;
+-    uint32_t nr_images;
++    int32_t nr_images;
+ 
+     FWU_LOG_MSG("%s: enter\n\r", __func__);
+ 
+diff --git a/platform/ext/target/arm/corstone1000/fw_update_agent/uefi_capsule_parser.c b/platform/ext/target/arm/corstone1000/fw_update_agent/uefi_capsule_parser.c
+index b72ff1eb..220cea15 100644
+--- a/platform/ext/target/arm/corstone1000/fw_update_agent/uefi_capsule_parser.c
++++ b/platform/ext/target/arm/corstone1000/fw_update_agent/uefi_capsule_parser.c
+@@ -89,11 +89,11 @@ enum uefi_capsule_error_t uefi_capsule_retrieve_images(void* capsule_ptr,
+     efi_capsule_header_t* capsule_header;
+     efi_firmware_management_capsule_header_t* fmp_capsule_header;
+     efi_firmware_management_capsule_image_header_t* image_header;
+-    efi_firmware_image_authentication_t* image_auth;
++    //efi_firmware_image_authentication_t* image_auth;
+     fmp_payload_header_t *fmp_payload_header;
+     uint32_t total_size;
+-    uint32_t image_count;
+-    uint32_t auth_size;
++    ssize_t image_count;
++    //uint32_t auth_size;
+ 
+     FWU_LOG_MSG("%s: enter, capsule ptr = 0x%p\n\r", __func__, capsule_ptr);
+ 
+@@ -105,7 +105,7 @@ enum uefi_capsule_error_t uefi_capsule_retrieve_images(void* capsule_ptr,
+     ptr += sizeof(efi_capsule_header_t) + sizeof(uint32_t);
+     fmp_capsule_header = (efi_firmware_management_capsule_header_t*)ptr;
+ 
+-    fmp_payload_header = fmp_capsule_header + sizeof(*fmp_capsule_header);
++    fmp_payload_header = (fmp_payload_header_t *) (fmp_capsule_header + sizeof(*fmp_capsule_header));
+ 
+     total_size = capsule_header->capsule_image_size;
+     image_count = fmp_capsule_header->payload_item_count;
 diff --git a/platform/ext/target/arm/corstone1000/openamp/CMakeLists.txt b/platform/ext/target/arm/corstone1000/openamp/CMakeLists.txt
-index 98058204..5da8b515 100644
+index 98058204..69b7d751 100644
 --- a/platform/ext/target/arm/corstone1000/openamp/CMakeLists.txt
 +++ b/platform/ext/target/arm/corstone1000/openamp/CMakeLists.txt
+@@ -36,11 +36,11 @@ target_sources(platform_s
+         tfm_spe_psa_client_lib_unordered_map.c
+ )
+ 
+-target_link_libraries(open_amp-static
+-    PRIVATE
+-        metal-static
+-)
+-
++#target_link_libraries(open_amp-static
++#    PRIVATE
++#        metal-static
++#)
++#
+ target_compile_definitions(open_amp-static
+     PRIVATE
+         RPMSG_BUFFER_SIZE=8192
 @@ -49,6 +49,7 @@ target_compile_definitions(open_amp-static
  target_link_libraries(platform_s
      PRIVATE
@@ -320,10 +548,18 @@ index 98058204..5da8b515 100644
  
  # Export header file shared with non-secure side
 diff --git a/platform/ext/target/arm/corstone1000/openamp/platform_spe_dual_core_hal.c b/platform/ext/target/arm/corstone1000/openamp/platform_spe_dual_core_hal.c
-index 7cabaa2b..c0f5540e 100644
+index 7cabaa2b..7b5188c5 100644
 --- a/platform/ext/target/arm/corstone1000/openamp/platform_spe_dual_core_hal.c
 +++ b/platform/ext/target/arm/corstone1000/openamp/platform_spe_dual_core_hal.c
-@@ -124,7 +124,7 @@ enum tfm_plat_err_t tfm_hal_notify_peer(void)
+@@ -13,6 +13,7 @@
+ #include "tfm_plat_defs.h"
+ #include "tfm_spm_log.h"
+ #include "cmsis.h"
++#include "ffm/interrupt.h"
+ 
+ #define MHU1_SEH_NOTIFY_CH 0
+ #define MHU1_SEH_NOTIFY_VAL 1234
+@@ -124,7 +125,7 @@ enum tfm_plat_err_t tfm_hal_notify_peer(void)
   * entries are removed from the unordered map).
   */
  bool  __atomic_compare_exchange_4(volatile void *mem, void *expected,
